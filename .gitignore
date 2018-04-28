@@ -175,3 +175,7 @@ run/
 *.ipr
 
 *.txt
+
+output/
+
+changelog\.html
