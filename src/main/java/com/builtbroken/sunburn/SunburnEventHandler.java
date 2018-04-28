@@ -1,44 +1,67 @@
 package com.builtbroken.sunburn;
 
-import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
-import net.minecraft.world.biome.Biome;
-import net.minecraftforge.common.BiomeManager;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-
-import java.util.Random;
+import net.minecraftforge.fml.common.gameevent.PlayerEvent;
 
 /**
  * @see <a href="https://github.com/BuiltBrokenModding/VoltzEngine/blob/development/license.md">License</a> for what you can and can't do with the code.
  * Created by Hennamann(Ole Henrik Stabell) on 07/04/2018.
  */
 @Mod.EventBusSubscriber(modid = Sunburn.DOMAIN)
-public class SunburnEventHandler {
-
-    private static final int baseBurnTime = 4;
+public class SunburnEventHandler
+{
+    public static final String NBT_SUN_BLOCK = Sunburn.PREFIX + "sun_block";
 
     @SubscribeEvent
-    public static void onPlayerInSunlight(LivingEvent.LivingUpdateEvent event) {
-        EntityLivingBase entity = event.getEntityLiving();
-        World world = entity.world;
-        Biome biome = entity.world.getBiome(new BlockPos(entity.posX, entity.posY, entity.posZ));
-        Random rand = new Random();
-
-        if (entity instanceof EntityPlayer && world.isDaytime() && !world.isRemote && !entity.isChild() && !((EntityPlayer) entity).isCreative()) {
-            float f = entity.getBrightness();
-            if (f > 0.5F && rand.nextFloat() * 30.0F < (f - 0.4F) * 2.0F && world.canSeeSky(new BlockPos(entity.posX, entity.posY + (double) entity.getEyeHeight(), entity.posZ))) {
-                if (BiomeManager.getBiomes(BiomeManager.BiomeType.WARM).contains(biome) || BiomeManager.getBiomes(BiomeManager.BiomeType.DESERT).contains(biome)) {
-                    entity.setFire(baseBurnTime * 4);
-                } else if (BiomeManager.getBiomes(BiomeManager.BiomeType.COOL).contains(biome) || BiomeManager.getBiomes(BiomeManager.BiomeType.ICY).contains(biome)) {
-                    entity.setFire(baseBurnTime * 2);
-                } else {
-                    entity.setFire(baseBurnTime);
+    public static void onPlayerInSunlight(LivingEvent.LivingUpdateEvent event)
+    {
+        if (event.getEntity() instanceof EntityPlayer)
+        {
+            EntityPlayer player = (EntityPlayer) event.getEntity();
+            if (canBurn(player))
+            {
+                float brightness = player.getBrightness();
+                if (brightness > 0.5F && !player.isImmuneToFire() && player.world.canSeeSky(new BlockPos(player.posX, player.posY + (double) player.getEyeHeight(), player.posZ)))
+                {
+                    player.setFire(ConfigMain.TIME_TO_SET_FIRE);
                 }
             }
+            else if (getSunBlock(player) > 0)
+            {
+                setSunBlock(player, getSunBlock(player) - 1);
+            }
         }
+    }
+
+    public static boolean canBurn(EntityPlayer player)
+    {
+        return player.world.isDaytime() && !player.world.isRemote && !player.isCreative() && getSunBlock(player) <= 0;
+    }
+
+    @SubscribeEvent
+    public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event)
+    {
+        final EntityPlayer entity = event.player;
+        final World world = entity.world;
+
+        if (!world.isRemote && !event.isEndConquered())
+        {
+            setSunBlock(entity, ConfigMain.SUN_BLOCK_TICKS);
+        }
+    }
+
+    public static void setSunBlock(EntityPlayer player, int time)
+    {
+        player.getEntityData().setInteger(NBT_SUN_BLOCK, time);
+    }
+
+    public static int getSunBlock(EntityPlayer player)
+    {
+        return player.getEntityData().getInteger(NBT_SUN_BLOCK);
     }
 }
