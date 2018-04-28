@@ -3,6 +3,7 @@ package com.builtbroken.sunburn;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -31,13 +32,19 @@ public class SunburnEventHandler
                     player.setFire(ConfigMain.TIME_TO_SET_FIRE);
                 }
             }
-            else if (getSunBlock(player) > 0)
+            else if (getSunBlock(player) >= 0)
             {
                 setSunBlock(player, getSunBlock(player) - 1);
             }
         }
     }
 
+    /**
+     * Checks to see if the player can be burned
+     *
+     * @param player - player to check
+     * @return true if the player can be burned by sun light
+     */
     public static boolean canBurn(EntityPlayer player)
     {
         return player.world.isDaytime() && !player.world.isRemote && !player.isCreative() && getSunBlock(player) <= 0;
@@ -55,11 +62,35 @@ public class SunburnEventHandler
         }
     }
 
+    @SubscribeEvent
+    public static void onEntityJoinWorld(EntityJoinWorldEvent event)
+    {
+        if (event.getEntity() instanceof EntityPlayer && !event.getWorld().isRemote)
+        {
+            if (!event.getEntity().getEntityData().hasKey(NBT_SUN_BLOCK))
+            {
+                setSunBlock((EntityPlayer) event.getEntity(), ConfigMain.SUN_BLOCK_TICKS);
+            }
+        }
+    }
+
+    /**
+     * Sets the value of sunblock
+     *
+     * @param player - player to check
+     * @param time   - time in ticks, anything under zero is disable
+     */
     public static void setSunBlock(EntityPlayer player, int time)
     {
         player.getEntityData().setInteger(NBT_SUN_BLOCK, time);
     }
 
+    /**
+     * Gets sunblock time of the player
+     *
+     * @param player - player to check
+     * @return value, -1 is no sunblock
+     */
     public static int getSunBlock(EntityPlayer player)
     {
         return player.getEntityData().getInteger(NBT_SUN_BLOCK);
